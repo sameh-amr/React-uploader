@@ -2,9 +2,9 @@ import AWS, { AWSError, S3 } from "aws-sdk";
 
 const s3 = new AWS.S3({
   endpoint: new AWS.Endpoint("https://nyc3.digitaloceanspaces.com"),
-  accessKeyId: "DO00UF7KLPU8BEQWFN3R",
+  accessKeyId: "",
   secretAccessKey:
-    "test",
+    "",
   region: "nyc3",
 });
 
