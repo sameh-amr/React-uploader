@@ -3,30 +3,35 @@ import { v4 as uuidv4 } from 'uuid';
 import { UploadedFile, FileAction } from '../types/types';
 
 const MAX_CONCURRENT_UPLOADS = 3;
+const UPLOAD_DELAY = 1000; // Simulated upload delay in ms
 
 export const useFileUpload = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [filter, setFilter] = useState('');
   const [activeUploads, setActiveUploads] = useState(0);
 
-  // Simulate upload progress
-  const simulateUpload = useCallback((fileId: string, file: File) => {
+  // Actual file upload handler
+  const handleFileUpload = useCallback((fileId: string, file: File) => {
     return new Promise<string>((resolve) => {
+      // Create object URL immediately for "storage" (in memory)
+      const objectUrl = URL.createObjectURL(file);
+      
+      // Simulate upload progress
       let progress = 0;
       const interval = setInterval(() => {
-        progress += Math.random() * 10;
+        progress += 10 + Math.random() * 20;
         if (progress >= 100) {
           progress = 100;
           clearInterval(interval);
-          const url = URL.createObjectURL(file);
-          resolve(url);
+          resolve(objectUrl); // Resolve with the object URL after "upload"
         }
-        setFiles(prevFiles =>
-          prevFiles.map(f =>
+
+        setFiles(prevFiles => 
+          prevFiles.map(f => 
             f.id === fileId ? { ...f, progress } : f
           )
         );
-      }, 300);
+      }, UPLOAD_DELAY / 10);
     });
   }, []);
 
@@ -35,52 +40,55 @@ export const useFileUpload = () => {
       id: uuidv4(),
       name: file.name,
       size: file.size,
-      type: file.type.split('/')[1]?.toUpperCase() || file.name.split('.').pop()?.toUpperCase() || 'FILE',
+      type: file.type.split('/')[1]?.toUpperCase() ||
+            file.name.split('.').pop()?.toUpperCase() ||
+            'FILE',
       uploadedAt: new Date(),
       status: 'queued',
       progress: 0,
       file,
     }));
 
-    setFiles((prevFiles) => [...prevFiles, ...uploadedFiles]);
+    setFiles(prevFiles => [...prevFiles, ...uploadedFiles]);
   }, []);
 
   const processQueue = useCallback(() => {
     if (activeUploads >= MAX_CONCURRENT_UPLOADS) return;
 
-    const nextFile = files.find((file) => file.status === 'queued');
-    if (!nextFile || !nextFile.file) return;
+    const nextFile = files.find(f => f.status === 'queued');
+    if (!nextFile?.file) return;
 
-    setActiveUploads((count) => count + 1);
-    setFiles((prevFiles) =>
-      prevFiles.map((file) =>
-        file.id === nextFile.id ? { ...file, status: 'uploading' } : file
+    setActiveUploads(count => count + 1);
+    setFiles(prevFiles => 
+      prevFiles.map(f => 
+        f.id === nextFile.id ? { ...f, status: 'uploading' } : f
       )
     );
 
-    simulateUpload(nextFile.id, nextFile.file)
-      .then((url) => {
-        setFiles((prevFiles) =>
-          prevFiles.map((file) =>
-            file.id === nextFile.id
-              ? { ...file, status: 'completed', url, progress: 100 }
-              : file
+    handleFileUpload(nextFile.id, nextFile.file)
+      .then(url => {
+        setFiles(prevFiles => 
+          prevFiles.map(f => 
+            f.id === nextFile.id
+              ? { ...f, status: 'completed', url, progress: 100 }
+              : f
           )
         );
       })
       .catch(() => {
-        setFiles((prevFiles) =>
-          prevFiles.map((file) =>
-            file.id === nextFile.id ? { ...file, status: 'failed' } : file
+        setFiles(prevFiles => 
+          prevFiles.map(f => 
+            f.id === nextFile.id ? { ...f, status: 'failed' } : f
           )
         );
       })
       .finally(() => {
-        setActiveUploads((count) => count - 1);
-        processQueue();
+        setActiveUploads(count => count - 1);
+        processQueue(); // Process next file
       });
-  }, [files, activeUploads, simulateUpload]);
+  }, [files, activeUploads, handleFileUpload]);
 
+  // Process queue whenever files or activeUploads change
   useEffect(() => {
     processQueue();
   }, [files, processQueue]);
@@ -95,17 +103,20 @@ export const useFileUpload = () => {
           const a = document.createElement('a');
           a.href = file.url;
           a.download = file.name;
-          document.body.appendChild(a);
           a.click();
-          document.body.removeChild(a);
+          // Don't revoke URL if we might download again
         }
         break;
+
       case 'replace':
         const input = document.createElement('input');
         input.type = 'file';
         input.onchange = (e) => {
           const newFile = (e.target as HTMLInputElement).files?.[0];
           if (newFile) {
+            // Revoke old URL if exists
+            if (file.url) URL.revokeObjectURL(file.url);
+
             setFiles(prevFiles =>
               prevFiles.map(f =>
                 f.id === fileId
@@ -113,7 +124,9 @@ export const useFileUpload = () => {
                       ...f,
                       name: newFile.name,
                       size: newFile.size,
-                      type: newFile.type.split('/')[1]?.toUpperCase() || newFile.name.split('.').pop()?.toUpperCase() || 'FILE',
+                      type: newFile.type.split('/')[1]?.toUpperCase() ||
+                           newFile.name.split('.').pop()?.toUpperCase() ||
+                           'FILE',
                       file: newFile,
                       status: 'queued',
                       progress: 0,
@@ -126,16 +139,15 @@ export const useFileUpload = () => {
         };
         input.click();
         break;
+
       case 'delete':
-        if (file.url) {
-          URL.revokeObjectURL(file.url);
-        }
-        setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
+        if (file.url) URL.revokeObjectURL(file.url);
+        setFiles(prevFiles => prevFiles.filter(f => f.id !== fileId));
         break;
     }
   }, [files]);
 
-  const filteredFiles = files.filter((file) =>
+  const filteredFiles = files.filter(file =>
     file.name.toLowerCase().includes(filter.toLowerCase())
   );
 

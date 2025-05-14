@@ -7,7 +7,12 @@ export interface UploadedFile {
   status: 'queued' | 'uploading' | 'completed' | 'failed';
   progress: number;
   file?: File;
-  url?: string; // Will be object URL for in-app storage
+  url?: string;
+  error?:string;
+}
+export interface FileTableRowProps {
+  file: UploadedFile;
+  onAction: (action: FileAction, fileId: string) => void;
 }
 
 export type FileAction = 'download' | 'replace' | 'delete';

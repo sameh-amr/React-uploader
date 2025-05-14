@@ -22,7 +22,7 @@ export const FileUploader = ({ onFilesSelected }: FileUploaderProps) => {
     >
       <input {...getInputProps()} />
       <div className="flex flex-col items-center justify-center space-y-2">
-        <FiUploadCloud className="w-12 h-12 text-gray-400" />
+        {/* <FiUploadCloud className="w-12 h-12 text-gray-400" /> */}
         <p className="text-lg font-medium text-gray-700">
           {isDragActive ? 'Drop the files here' : 'Drag & drop files here, or click to select'}
         </p>
