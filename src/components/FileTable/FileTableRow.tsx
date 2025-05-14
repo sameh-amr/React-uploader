@@ -1,6 +1,6 @@
-
 import { FiDownload, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import { FileTableRowProps } from "../../types/types";
+
 export const FileTableRow = ({ file, onAction }: FileTableRowProps) => {
   const formatSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -49,13 +49,6 @@ export const FileTableRow = ({ file, onAction }: FileTableRowProps) => {
             title="Download"
           >
             <FiDownload />
-          </button>
-          <button
-            onClick={() => onAction("replace", file.id)}
-            className="p-1 text-yellow-500 hover:text-yellow-700"
-            title="Replace"
-          >
-            <FiRefreshCw />
           </button>
           <button
             onClick={() => onAction("delete", file.id)}
